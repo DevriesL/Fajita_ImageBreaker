@@ -25,6 +25,7 @@
 #include <linux/project_info.h>
 #include <linux/pm_wakeup.h>
 #include "../sde/sde_trace.h"
+#include "exposure_adjustment.h"
 /**
  * topology is currently defined by a set of following 3 values:
  * 1. num of layer mixers
@@ -568,6 +569,17 @@ static int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
 	if (panel->type == EXT_BRIDGE)
 		return 0;
 
+	if (type == DSI_CMD_SET_SRGB_ON ||
+		type == DSI_CMD_SET_DCI_P3_ON ||
+		type == DSI_CMD_SET_NIGHT_ON ||
+		type == DSI_CMD_SET_ONEPLUS_MODE_ON)
+		ea_panel_mode_ctrl(panel, true);
+	else if ((type > DSI_CMD_SET_POST_TIMING_SWITCH &&
+		type < DSI_CMD_SET_PANEL_SERIAL_NUMBER) ||
+		type > DSI_CMD_READ_SAMSUNG_PANEL_REGISTER_OFF ||
+		type < DSI_CMD_SET_CMD_TO_VID_SWITCH)
+		ea_panel_mode_ctrl(panel, false);
+
 	mode = panel->cur_mode;
 
 	cmds = mode->priv_info->cmd_sets[type].cmds;
@@ -728,6 +740,8 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 
 	if (panel->type == EXT_BRIDGE)
 		return 0;
+
+	bl_lvl = ea_panel_calc_backlight(bl_lvl);
 
 	pr_debug("backlight type:%d lvl:%d\n", bl->type, bl_lvl);
 	switch (bl->type) {
